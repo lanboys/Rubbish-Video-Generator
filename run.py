@@ -27,7 +27,7 @@ in_mp3 = 'in.mp3' # 输入音频
 idx = 0
 
 def getText(file): # 组装台词
-    with open(file) as f:
+    with open(file,encoding="utf-8" ) as f:
         body = f.readline().strip()
         thing = f.readline().strip()
         other_word = f.readline().strip()
@@ -159,7 +159,7 @@ def subTitle(text_file, video_file, output='out_sub.mp4'):
     print(sentences)
 
     txts = [] # 所有字幕剪辑
-    with open('args.txt') as f:
+    with open('args.txt',encoding="utf-8") as f:
         args = f.readlines()
         color = args[4].strip()
         fontsize = int(args[5].strip())
@@ -226,35 +226,36 @@ if __name__ == "__main__":
 
     # 获取APPID、APIKey、APISecret
     APPID, APIKey, APISecret = '', '', ''
-    with open('args.txt') as f:
+    with open('args.txt',encoding="utf-8") as f:
         APPID, APIKey, APISecret = f.readlines()[3].strip().split(';')
 
     # 文本转人声
-    # audio = []
-    # cmd = 'ffmpeg -f lavfi -i aevalsrc=0 -t {} -q:a 9 -acodec libmp3lame -y output0.mp3'.format('00:00:01')
-    # subprocess.call(cmd, shell=True)
-    # with open('text.txt') as f:
-    #     text_tmp = f.readlines()
-    #     for i in text_tmp:
-    #         text = i.strip().split(':')[0]
-    #         span = int(i.strip().split(":")[1])
-    #         start = int(i.strip().split(':')[2])
-    #
-    #         wsParam = Ws_Param(APPID=APPID, APIKey=APIKey,
-    #                         APISecret=APISecret,
-    #                         Text=text)
-    #         websocket.enableTrace(False)
-    #         wsUrl = wsParam.create_url()
-    #         ws = websocket.WebSocketApp(wsUrl, on_message=on_message, on_error=on_error, on_close=on_close)
-    #         ws.on_open = on_open
-    #         ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
-    #         idx = idx + 1
-    #
-    # cmd = 'ffmpeg -i output0.mp3 -i people0.mp3 -i people1.mp3 -i people2.mp3 -i people3.mp3 -i people4.mp3 -i people5.mp3 -i people6.mp3 -i people7.mp3 -filter_complex "[1]adelay=0000|0000[del1],[2]adelay=4000|4000[del2],[3]adelay=11000|11000[del3],[4]adelay=15000|15000[del4],[5]adelay=23000|23000[del5],[6]adelay=29000|29000[del6],[7]adelay=34000|34000[del7],[8]adelay=40000|40000[del8], [0][del1][del2][del3][del4][del5][del6][del7][del8]amix=9" test.mp3'
-    # subprocess.call(cmd, shell=True)
-    # addPeople('test.mp3', 'out_sub.mp4') # 给视频添加人声
-    # clean() # 清除中间生成的文件
-    # print('Complete!')
+    audio = []
+    cmd = 'ffmpeg -f lavfi -i aevalsrc=0 -t {} -q:a 9 -acodec libmp3lame -y output0.mp3'.format('00:00:01')
+    subprocess.call(cmd, shell=True)
+    with open('text.txt',encoding="utf-8") as f:
+        text_tmp = f.readlines()
+        for i in text_tmp:
+            text = i.strip().split(':')[0]
+            span = int(i.strip().split(":")[1])
+            start = int(i.strip().split(':')[2])
+
+            wsParam = Ws_Param(APPID=APPID, APIKey=APIKey,
+                            APISecret=APISecret,
+                            Text=text)
+            websocket.enableTrace(False)
+            wsUrl = wsParam.create_url()
+            ws = websocket.WebSocketApp(wsUrl, on_message=on_message, on_error=on_error, on_close=on_close)
+            ws.on_open = on_open
+            ws.run_forever()
+            # ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
+            idx = idx + 1
+
+    cmd = 'ffmpeg -i output0.mp3 -i people0.mp3 -i people1.mp3 -i people2.mp3 -i people3.mp3 -i people4.mp3 -i people5.mp3 -i people6.mp3 -i people7.mp3 -filter_complex "[1]adelay=0000|0000[del1],[2]adelay=4000|4000[del2],[3]adelay=11000|11000[del3],[4]adelay=15000|15000[del4],[5]adelay=23000|23000[del5],[6]adelay=29000|29000[del6],[7]adelay=34000|34000[del7],[8]adelay=40000|40000[del8], [0][del1][del2][del3][del4][del5][del6][del7][del8]amix=9" test.mp3'
+    subprocess.call(cmd, shell=True)
+    addPeople('test.mp3', 'out_sub.mp4') # 给视频添加人声
+    clean() # 清除中间生成的文件
+    print('Complete!')
 
 # 1. 裁剪视频 √
 # 2. 台词写入文本 √

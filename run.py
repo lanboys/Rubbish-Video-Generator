@@ -31,7 +31,7 @@ def getText(file): # 组装台词
         body = f.readline().strip()
         thing = f.readline().strip()
         other_word = f.readline().strip()
-    
+
     # 主题框架
     txt = '''{}{}是怎么回事呢？:4:0
 {}相信大家都很熟悉，但是{}{}是怎么回事呢？:7:4
@@ -43,7 +43,7 @@ def getText(file): # 组装台词
 欢迎在评论区告诉小编一起讨论哦！:5:40'''.format(body, thing, body, body, thing, body, thing, other_word, body, thing, body, thing)
 
     # 台词写入
-    with open('text.txt', mode='w') as f:
+    with open('text.txt', mode='w',encoding="utf-8") as f:
         f.write(txt)
 
 STATUS_FIRST_FRAME = 0  # 第一帧的标识
@@ -75,7 +75,7 @@ class Ws_Param(object):
         date = format_date_time(mktime(now.timetuple()))
 
         # 拼接字符串
-        signature_origin = "host: " + "ws-api.xfyun.cn" + "\n"
+        signature_origin = "host: " + "tts-api.xfyun.cn" + "\n"
         signature_origin += "date: " + date + "\n"
         signature_origin += "GET " + "/v2/tts " + "HTTP/1.1"
         # 进行hmac-sha256进行加密
@@ -90,7 +90,7 @@ class Ws_Param(object):
         v = {
             "authorization": authorization,
             "date": date,
-            "host": "ws-api.xfyun.cn"
+            "host": "tts-api.xfyun.cn"
         }
         # 拼接鉴权参数，生成url
         url = url + '?' + urlencode(v)
@@ -145,18 +145,19 @@ def on_open(ws):
     thread.start_new_thread(run, ())
 
 def getVideo():
-    cmd =  'ffmpeg -y -i in.mp4 -ss 00:00:00 -t 00:00:50 -acodec copy -vcodec copy -async 1 in_sub.mp4'
+    # 为什么要将 - ss放在 - i前面？因为官方文档推荐这样做
+    cmd = 'ffmpeg -ss 00:00:00 -i in.mp4 -t 00:00:50 -c copy -y in_sub.mp4'
     subprocess.call(cmd, shell=True)
 
 def subTitle(text_file, video_file, output='out_sub.mp4'):
     video1 = VideoFileClip(video_file)
     sentences = [] # 台词列表
-    with open(text_file) as f:
+    with open(text_file,encoding="utf-8") as f:
         text_tmp = f.readlines()
         for i in text_tmp:
             sentences.append(i.strip().split(':'))
     print(sentences)
-    
+
     txts = [] # 所有字幕剪辑
     with open('args.txt') as f:
         args = f.readlines()
@@ -169,7 +170,7 @@ def subTitle(text_file, video_file, output='out_sub.mp4'):
 
     video2 = CompositeVideoClip([video1, *txts])
     video2.write_videofile(output)
-    
+
 def getLength(video): # 获取视频时长
     cmd = 'ffprobe -v quiet -select_streams v -show_entries stream=duration -of csv="p=0" {video}'.format(video=video)
     seconds = os.popen(cmd, 'r')
@@ -180,15 +181,15 @@ def getLength(video): # 获取视频时长
 
 def add_audio(video, mp3, output='out.mp4'): # 将背景音乐添加到视频中
 
-    BGM = 'ffmpeg -i {mp3} -ss 00:00:00.0 -t {time} -acodec copy BGM.mp3'.format(mp3=mp3, time=total_time)
+    BGM = 'ffmpeg -i {mp3} -ss 00:00:00.0 -t {time} -acodec copy -y BGM.mp3'.format(mp3=mp3, time=total_time)
     subprocess.call(BGM, shell=True)
 
-    volume = 'ffmpeg -i BGM.mp3 -vcodec copy -af "volume=-20dB" BGM_volume.mp3'
+    volume = 'ffmpeg -i BGM.mp3 -vcodec copy -af "volume=-20dB" -y BGM_volume.mp3'
     subprocess.call(volume, shell=True)
 
-    BGM1 = 'ffmpeg -i {video} -c:v copy -an nosound.mp4'.format(video=video)
+    BGM1 = 'ffmpeg -i {video} -c:v copy -an -y nosound.mp4'.format(video=video)
     subprocess.call(BGM1)
-    
+
     command = "ffmpeg -i {mp3} -i {video} -y {output}".format(video='nosound.mp4', mp3='BGM_volume.mp3', output=output)
     subprocess.call(command, shell=True)
 
@@ -199,20 +200,24 @@ def addPeople(mp3_file, video_file):
     final_audio = CompositeAudioClip([my_clip.audio, audio_background])
     final_clip = my_clip.set_audio(final_audio)
     final_clip.write_videofile('final.mp4')
+def removeFile(file):
+    if os.path.exists(file):
+        os.remove(file)
 
 def clean():
-    os.remove('in_sub.mp4')
-    os.remove('out.mp4')
-    os.remove('out_sub.mp4')
+    removeFile('in_sub.mp4')
+    removeFile('out.mp4')
+    removeFile('out_sub.mp4')
+    removeFile('output0.mp3')
+    removeFile('test.mp3')
+    removeFile('BGM.mp3')
+    removeFile('BGM_volume.mp3')
+    removeFile('nosound.mp4')
     for i in range(8):
-        os.remove('people{}.mp3'.format(i))
-    os.remove('output0.mp3')
-    os.remove('test.mp3')
-    os.remove('BGM.mp3')
-    os.remove('BGM_volume.mp3')
-    os.remove('nosound.mp4')
+        removeFile('people{}.mp3'.format(i))
 
 if __name__ == "__main__":
+    clean() # 清除中间生成的文件
     getVideo() # 裁剪视频
     getText('args.txt') # 台词写入文本
     total_time = getLength(in_mp4) # 获取视频总时长
@@ -225,31 +230,31 @@ if __name__ == "__main__":
         APPID, APIKey, APISecret = f.readlines()[3].strip().split(';')
 
     # 文本转人声
-    audio = []
-    cmd = 'ffmpeg -f lavfi -i aevalsrc=0 -t {} -q:a 9 -acodec libmp3lame output0.mp3'.format('00:00:01')
-    subprocess.call(cmd, shell=True)
-    with open('text.txt') as f:
-        text_tmp = f.readlines()
-        for i in text_tmp:
-            text = i.strip().split(':')[0]
-            span = int(i.strip().split(":")[1])
-            start = int(i.strip().split(':')[2])
-
-            wsParam = Ws_Param(APPID=APPID, APIKey=APIKey,
-                            APISecret=APISecret,
-                            Text=text)
-            websocket.enableTrace(False)
-            wsUrl = wsParam.create_url()
-            ws = websocket.WebSocketApp(wsUrl, on_message=on_message, on_error=on_error, on_close=on_close)
-            ws.on_open = on_open
-            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
-            idx = idx + 1
-    
-    cmd = 'ffmpeg -i output0.mp3 -i people0.mp3 -i people1.mp3 -i people2.mp3 -i people3.mp3 -i people4.mp3 -i people5.mp3 -i people6.mp3 -i people7.mp3 -filter_complex "[1]adelay=0000|0000[del1],[2]adelay=4000|4000[del2],[3]adelay=11000|11000[del3],[4]adelay=15000|15000[del4],[5]adelay=23000|23000[del5],[6]adelay=29000|29000[del6],[7]adelay=34000|34000[del7],[8]adelay=40000|40000[del8], [0][del1][del2][del3][del4][del5][del6][del7][del8]amix=9" test.mp3'
-    subprocess.call(cmd, shell=True)
-    addPeople('test.mp3', 'out_sub.mp4') # 给视频添加人声
-    clean() # 清除中间生成的文件
-    print('Complete!')
+    # audio = []
+    # cmd = 'ffmpeg -f lavfi -i aevalsrc=0 -t {} -q:a 9 -acodec libmp3lame -y output0.mp3'.format('00:00:01')
+    # subprocess.call(cmd, shell=True)
+    # with open('text.txt') as f:
+    #     text_tmp = f.readlines()
+    #     for i in text_tmp:
+    #         text = i.strip().split(':')[0]
+    #         span = int(i.strip().split(":")[1])
+    #         start = int(i.strip().split(':')[2])
+    #
+    #         wsParam = Ws_Param(APPID=APPID, APIKey=APIKey,
+    #                         APISecret=APISecret,
+    #                         Text=text)
+    #         websocket.enableTrace(False)
+    #         wsUrl = wsParam.create_url()
+    #         ws = websocket.WebSocketApp(wsUrl, on_message=on_message, on_error=on_error, on_close=on_close)
+    #         ws.on_open = on_open
+    #         ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
+    #         idx = idx + 1
+    #
+    # cmd = 'ffmpeg -i output0.mp3 -i people0.mp3 -i people1.mp3 -i people2.mp3 -i people3.mp3 -i people4.mp3 -i people5.mp3 -i people6.mp3 -i people7.mp3 -filter_complex "[1]adelay=0000|0000[del1],[2]adelay=4000|4000[del2],[3]adelay=11000|11000[del3],[4]adelay=15000|15000[del4],[5]adelay=23000|23000[del5],[6]adelay=29000|29000[del6],[7]adelay=34000|34000[del7],[8]adelay=40000|40000[del8], [0][del1][del2][del3][del4][del5][del6][del7][del8]amix=9" test.mp3'
+    # subprocess.call(cmd, shell=True)
+    # addPeople('test.mp3', 'out_sub.mp4') # 给视频添加人声
+    # clean() # 清除中间生成的文件
+    # print('Complete!')
 
 # 1. 裁剪视频 √
 # 2. 台词写入文本 √

@@ -49,6 +49,21 @@ pip install websocket-client
 4. 在`args.txt`文本中添加讯飞语音合成（流式版）的`APPID`、`APIKey`、`APISecret`，以英文分号`;`分隔
 5. 执行程序
 
+args.txt
+```commandline
+核桃核
+不能吞下去
+核桃核太大了，吞下去容易噎着
+APPID;APIKey;APISecret
+black
+35
+```
+
+
+
+
+
+
 #### 示例
 
 ![](https://s1.ax1x.com/2020/06/27/Nc3ctK.png#shadow)
